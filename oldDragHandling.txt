@@ -1,0 +1,78 @@
+  const findDealMonth = (dealId) => {
+    for (const [month, deals] of Object.entries(dealsByMonth)) {
+      if (deals.find(d => d.id === dealId)) return month;
+    }
+    return null;
+  };
+
+  const handleDragStart = (event) => {
+    const { active } = event;
+    const dealId = active.id;
+    const month = findDealMonth(dealId);
+    const deal = dealsByMonth[month].find(d => d.id === dealId);
+    setActiveDeal(deal);
+  };
+
+  const handleDragOver = (event) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+
+    // Find the source month
+    const sourceMonth = findDealMonth(activeId);
+    
+    // Check if we're dropping over a month column
+    if (Object.keys(dealsByMonth).includes(overId)) {
+      const targetMonth = overId;
+      
+      if (sourceMonth !== targetMonth) {
+        setDealsByMonth(prev => {
+          const newMap = { ...prev };
+          const deal = newMap[sourceMonth].find(d => d.id === activeId);
+          
+          // Remove from source first to avoid duplicate keys
+          newMap[sourceMonth] = newMap[sourceMonth].filter(d => d.id !== activeId);
+          
+          // Then add to target
+          if (!newMap[targetMonth]) {
+            newMap[targetMonth] = [];
+          }
+          newMap[targetMonth] = [...newMap[targetMonth], deal];
+          
+          return newMap;
+        });
+      }
+      return;
+    }
+
+    // Check if we're dropping over another deal (for repositioning)
+    const targetMonth = findDealMonth(overId);
+    
+    if (targetMonth && sourceMonth) {
+      setDealsByMonth(prev => {
+        const newMap = { ...prev };
+        const deal = newMap[sourceMonth].find(d => d.id === activeId);
+        
+        // Remove from source first to avoid duplicate keys
+        newMap[sourceMonth] = newMap[sourceMonth].filter(d => d.id !== activeId);
+        
+        if (sourceMonth === targetMonth) {
+          // Reordering within the same month
+          const targetIndex = newMap[targetMonth].findIndex(d => d.id === overId);
+          newMap[targetMonth].splice(targetIndex, 0, deal);
+        } else {
+          // Moving to a different month
+          const targetIndex = newMap[targetMonth].findIndex(d => d.id === overId);
+          newMap[targetMonth].splice(targetIndex, 0, deal);
+        }
+        
+        return newMap;
+      });
+    }
+  };
+
+  const handleDragEnd = () => {
+    setActiveDeal(null);
+  };
