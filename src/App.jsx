@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -39,12 +39,6 @@ const monthColors = [
 ];
 
 const CRMPipelineKanban = () => {
-  
-  fetch("http://localhost:3001/api/zoho")
-  .then(res => res.json())
-  .then(data => console.log(data.details.output))
-  .catch(err => console.error(err));
-
 
   const initialDeals = [
     { id: 'deal-1', title: 'Wright Millners', value: 30830, company: 'Acme Corp', contact: 'John Smith', closeDate: '2024-07-15', probability: 75 },
@@ -110,6 +104,23 @@ const CRMPipelineKanban = () => {
   });
 
   const [activeDeal, setActiveDeal] = useState(null);
+
+  const [columns, setColumns] = useState([]);
+  const [rows, setRows] = useState([]);
+
+  useEffect(() => {
+    fetch('http://localhost:3001/api/zoho')
+      .then((res) => res.json())
+      .then((data) => {
+        // Parse the stringified JSON inside data.details.output
+        if (data.details && data.details.output) {
+          const output = JSON.parse(data.details.output);
+          setColumns(output.column_order || []);
+          setRows(output.rows || []);
+        }
+      })
+      .catch((err) => console.error('Zoho fetch error:', err));
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -308,6 +319,7 @@ const CRMPipelineKanban = () => {
   };
 
   return (
+    <>
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
@@ -398,6 +410,51 @@ const CRMPipelineKanban = () => {
         </DragOverlay>
       </div>
     </DndContext>
+        <div className="mt-12">
+  <h2 className="text-xl font-bold mb-4">Zoho Potentials Table</h2>
+  <div className="overflow-x-auto border rounded-lg shadow">
+    <table className="min-w-full divide-y divide-gray-200 text-sm text-left">
+      <thead className="bg-gray-100">
+        <tr>
+          {columns.map((col, i) => (
+            <th
+              key={i}
+              className="px-4 py-2 font-medium text-gray-600 whitespace-nowrap"
+            >
+              {col.replace(/_/g, ' ')}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-100 bg-white">
+        {rows.length === 0 ? (
+          <tr>
+            <td
+              colSpan={columns.length}
+              className="px-4 py-4 text-gray-500 italic text-center"
+            >
+              Loading Zoho deals...
+            </td>
+          </tr>
+        ) : (
+          rows.map((row, rowIndex) => (
+            <tr key={rowIndex}>
+              {row.map((cell, cellIndex) => (
+                <td key={cellIndex} className="px-4 py-2 whitespace-nowrap">
+                  {typeof cell === 'number' && columns[cellIndex] === 'Amount'
+                    ? `R ${cell.toLocaleString()}`
+                    : cell || '-'}
+                </td>
+              ))}
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+    </>
   );
 };
 
