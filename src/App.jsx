@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -39,6 +39,13 @@ const monthColors = [
 ];
 
 const CRMPipelineKanban = () => {
+  
+  fetch("http://localhost:3001/api/zoho")
+  .then(res => res.json())
+  .then(data => console.log(data.details.output))
+  .catch(err => console.error(err));
+
+
   const initialDeals = [
     { id: 'deal-1', title: 'Wright Millners', value: 30830, company: 'Acme Corp', contact: 'John Smith', closeDate: '2024-07-15', probability: 75 },
     { id: 'deal-2', title: 'Limpopo Gambling Board', value: "", company: 'TechCo', contact: 'Sarah Johnson', closeDate: '2024-08-20', probability: 50 },
@@ -111,23 +118,27 @@ const CRMPipelineKanban = () => {
     })
   );
 
-  const handleDragStart = (event) => {
-    const { active } = event;
-    const dealId = active.id;
-    const month = findDealMonth(dealId);
-    const deal = dealsByMonth[month].find(d => d.id === dealId);
-    setActiveDeal(deal);
-  };
-
   const findDealMonth = (dealId) => {
     for (const [month, deals] of Object.entries(dealsByMonth)) {
-      if (deals.find(d => d.id === dealId)) return month;
+      if (deals && deals.find(d => d.id === dealId)) return month;
     }
     return null;
   };
 
-  const handleDragOver = (event) => {
+  const handleDragStart = (event) => {
+    const { active } = event;
+    const dealId = active.id;
+    const month = findDealMonth(dealId);
+    if (month) {
+      const deal = dealsByMonth[month].find(d => d.id === dealId);
+      setActiveDeal(deal);
+    }
+  };
+
+  const handleDragEnd = (event) => {
     const { active, over } = event;
+    setActiveDeal(null);
+    
     if (!over) return;
 
     const activeId = active.id;
@@ -135,7 +146,8 @@ const CRMPipelineKanban = () => {
 
     // Find the source month
     const sourceMonth = findDealMonth(activeId);
-    
+    if (!sourceMonth) return; // Safety check
+
     // Check if we're dropping over a month column
     if (Object.keys(dealsByMonth).includes(overId)) {
       const targetMonth = overId;
@@ -143,9 +155,19 @@ const CRMPipelineKanban = () => {
       if (sourceMonth !== targetMonth) {
         setDealsByMonth(prev => {
           const newMap = { ...prev };
-          const deal = newMap[sourceMonth].find(d => d.id === activeId);
+          const sourceDeal = newMap[sourceMonth]?.find(d => d.id === activeId);
+          
+          if (!sourceDeal) return prev; // Safety check - don't update if deal not found
+          
+          // Remove from source
           newMap[sourceMonth] = newMap[sourceMonth].filter(d => d.id !== activeId);
-          newMap[targetMonth] = [...newMap[targetMonth], deal];
+          
+          // Add to target
+          if (!newMap[targetMonth]) {
+            newMap[targetMonth] = [];
+          }
+          newMap[targetMonth] = [...newMap[targetMonth], sourceDeal];
+          
           return newMap;
         });
       }
@@ -158,7 +180,9 @@ const CRMPipelineKanban = () => {
     if (targetMonth && sourceMonth) {
       setDealsByMonth(prev => {
         const newMap = { ...prev };
-        const deal = newMap[sourceMonth].find(d => d.id === activeId);
+        const sourceDeal = newMap[sourceMonth]?.find(d => d.id === activeId);
+        
+        if (!sourceDeal) return prev; // Safety check - don't update if deal not found
         
         // Remove from source
         newMap[sourceMonth] = newMap[sourceMonth].filter(d => d.id !== activeId);
@@ -166,20 +190,26 @@ const CRMPipelineKanban = () => {
         if (sourceMonth === targetMonth) {
           // Reordering within the same month
           const targetIndex = newMap[targetMonth].findIndex(d => d.id === overId);
-          newMap[targetMonth].splice(targetIndex, 0, deal);
+          if (targetIndex >= 0) {
+            newMap[targetMonth].splice(targetIndex, 0, sourceDeal);
+          } else {
+            // If target not found, just add to end
+            newMap[targetMonth].push(sourceDeal);
+          }
         } else {
           // Moving to a different month
           const targetIndex = newMap[targetMonth].findIndex(d => d.id === overId);
-          newMap[targetMonth].splice(targetIndex, 0, deal);
+          if (targetIndex >= 0) {
+            newMap[targetMonth].splice(targetIndex, 0, sourceDeal);
+          } else {
+            // If target not found, just add to end
+            newMap[targetMonth].push(sourceDeal);
+          }
         }
         
         return newMap;
       });
     }
-  };
-
-  const handleDragEnd = () => {
-    setActiveDeal(null);
   };
 
   const formatDate = (dateString) => {
@@ -268,8 +298,8 @@ const CRMPipelineKanban = () => {
         </div>
         <div className="flex-1 overflow-y-auto">
           <SortableContext items={children.map(d => d.id)} strategy={verticalListSortingStrategy}>
-            {children.map(deal => (
-              <SortableDealCard key={deal.id} deal={deal} />
+            {children.map((deal, index) => (
+              <SortableDealCard key={`${month}-${deal.id}-${index}`} deal={deal} />
             ))}
           </SortableContext>
         </div>
@@ -282,10 +312,10 @@ const CRMPipelineKanban = () => {
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
+      // onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="h-screen bg-gray-50 flex flex-col">
+      <div className="h-screen w-screen bg-gray-50 flex flex-col">
         <div className="bg-white shadow-sm border-b p-4 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">Monthly Deals</h1>
