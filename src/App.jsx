@@ -30,96 +30,138 @@ const monthColors = [
   'bg-green-50 border-green-200',
   'bg-yellow-50 border-yellow-200',
   'bg-pink-50 border-pink-200',
-  //'bg-purple-50 border-purple-200',
-  //'bg-orange-50 border-orange-200',
-  //'bg-teal-50 border-teal-200',
- // 'bg-red-50 border-red-200',
-  //'bg-indigo-50 border-indigo-200',
-  //'bg-lime-50 border-lime-200',
+  'bg-purple-50 border-purple-200',
+  'bg-orange-50 border-orange-200',
+  'bg-teal-50 border-teal-200',
+  'bg-red-50 border-red-200',
+  'bg-indigo-50 border-indigo-200',
+  'bg-lime-50 border-lime-200',
 ];
 
+const name = 'Themba Zungu';
+
 const CRMPipelineKanban = () => {
-
-  const initialDeals = [
-    { id: 'deal-1', title: 'Wright Millners', value: 30830, company: 'Acme Corp', contact: 'John Smith', closeDate: '2024-07-15', probability: 75 },
-    { id: 'deal-2', title: 'Limpopo Gambling Board', value: "", company: 'TechCo', contact: 'Sarah Johnson', closeDate: '2024-08-20', probability: 50 },
-    { id: 'deal-3', title: 'Enterprise Software License', value: 45000, company: 'BigCorp', contact: 'Mike Wilson', closeDate: '2024-09-01', probability: 85 },
-    { id: 'deal-4', title: 'E-commerce Platform', value: 22000, company: 'RetailPlus', contact: 'Lisa Brown', closeDate: '2024-08-10', probability: 60 },
-    { id: 'deal-5', title: 'CRM Integration', value: 12000, company: 'SalesForce Inc', contact: 'David Lee', closeDate: '2024-10-01', probability: 90 },
-    { id: 'deal-6', title: 'Cloud Migration', value: 35000, company: 'CloudTech', contact: 'Emma Davis', closeDate: '2024-07-30', probability: 70 },
-    { id: 'deal-7', title: 'Security Audit', value: 18000, company: 'SecureNet', contact: 'Tom Anderson', closeDate: '2024-09-10', probability: 65 },
-    { id: 'deal-8', title: 'AI Research Partnership', value: 50000, company: 'InnovateX', contact: 'Alice Cooper', closeDate: '2024-07-25', probability: 80 },
-    { id: 'deal-9', title: 'Digital Transformation Project', value: 35000, company: 'TechFuture', contact: 'Jason Lee', closeDate: '2024-08-15', probability: 55 },
-    { id: 'deal-10', title: 'Blockchain Implementation', value: 42000, company: 'CryptoSoft', contact: 'Sophie Green', closeDate: '2024-09-05', probability: 90 },
-    { id: 'deal-11', title: 'SaaS Onboarding', value: 15000, company: 'SaaSPro', contact: 'Paul Turner', closeDate: '2024-08-02', probability: 60 },
-    { id: 'deal-12', title: 'IoT Network Deployment', value: 25000, company: 'TechWave', contact: 'George Knight', closeDate: '2024-09-30', probability: 80 },
-    { id: 'deal-13', title: 'Cybersecurity Solutions', value: 28000, company: 'SecureNet', contact: 'Chloe Adams', closeDate: '2024-10-05', probability: 65 },
-    { id: 'deal-14', title: 'Data Analytics Package', value: 45000, company: 'DataMind', contact: 'Sarah Harris', closeDate: '2024-07-18', probability: 50 },
-    { id: 'deal-15', title: 'Enterprise App Upgrade', value: 27000, company: 'SmartTech', contact: 'Brian Parker', closeDate: '2024-08-22', probability: 70 },
-    { id: 'deal-16', title: '5G Infrastructure', value: 52000, company: 'MobileTech', contact: 'Jessica Taylor', closeDate: '2024-09-15', probability: 85 },
-    { id: 'deal-17', title: 'ERP System Integration', value: 43000, company: 'BigCorp', contact: 'Evan Thompson', closeDate: '2024-10-12', probability: 60 },
-    { id: 'deal-18', title: 'Cloud Security Audit', value: 38000, company: 'CloudSec', contact: 'Kara Jenkins', closeDate: '2024-07-27', probability: 65 },
-    { id: 'deal-19', title: 'Digital Marketing Campaign', value: 20000, company: 'AdTech', contact: 'Nina Clark', closeDate: '2024-08-28', probability: 75 },
-    { id: 'deal-20', title: 'CRM System Development', value: 32000, company: 'RetailPlus', contact: 'Mark Evans', closeDate: '2024-09-20', probability: 70 },
-    { id: 'deal-21', title: 'AI-Powered Analytics', value: 55000, company: 'DataVision', contact: 'Olivia Scott', closeDate: '2024-07-10', probability: 90 },
-    { id: 'deal-22', title: 'Cloud-Based HR Solution', value: 48000, company: 'HRTech', contact: 'Liam Reed', closeDate: '2024-08-01', probability: 80 },
-    { id: 'deal-23', title: 'Next-Gen Payment System', value: 43000, company: 'FinTech Corp', contact: 'Megan White', closeDate: '2024-09-17', probability: 75 },
-    { id: 'deal-24', title: 'E-commerce Marketing', value: 15000, company: 'ShopRight', contact: 'Julia Morgan', closeDate: '2024-10-03', probability: 50 },
-    { id: 'deal-25', title: 'Supply Chain Automation', value: 32000, company: 'LogisticsCo', contact: 'Cameron Evans', closeDate: '2024-07-12', probability: 85 },
-    { id: 'deal-26', title: 'Remote Work Solutions', value: 24000, company: 'WorkTech', contact: 'Isabel Allen', closeDate: '2024-08-30', probability: 65 },
-    { id: 'deal-27', title: 'Automated Testing Framework', value: 28000, company: 'TestCo', contact: 'Raymond Stone', closeDate: '2024-09-25', probability: 90 },
-    { id: 'deal-28', title: 'Big Data Platform', value: 30000, company: 'DataVision', contact: 'Amanda Hughes', closeDate: '2024-10-10', probability: 50 },
-    { id: 'deal-29', title: 'RPA Deployment', value: 23000, company: 'RPA Solutions', contact: 'David Brown', closeDate: '2024-07-22', probability: 60 },
-    { id: 'deal-30', title: 'Telecommunications Expansion', value: 50000, company: 'TeleComTech', contact: 'Sophia Harris', closeDate: '2024-08-08', probability: 80 },
-    { id: 'deal-31', title: 'AI Chatbot Integration', value: 37000, company: 'TechBot', contact: 'Tom Green', closeDate: '2024-09-12', probability: 85 },
-    { id: 'deal-32', title: 'Cloud Data Migration', value: 44000, company: 'CloudShift', contact: 'Olivia King', closeDate: '2024-09-24', probability: 50 },
-    { id: 'deal-33', title: 'Workforce Management Software', value: 19000, company: 'HRSoft', contact: 'Noah Young', closeDate: '2024-07-20', probability: 70 },
-    { id: 'deal-34', title: 'Mobile App Development', value: 32000, company: 'AppTech', contact: 'Eva Morris', closeDate: '2024-08-13', probability: 90 },
-    { id: 'deal-35', title: 'AI Marketing Automation', value: 38000, company: 'MarketeerX', contact: 'Lily Phillips', closeDate: '2024-09-29', probability: 60 },
-    { id: 'deal-36', title: 'Financial Analytics Platform', value: 42000, company: 'FinAnalytics', contact: 'Isaac Turner', closeDate: '2024-07-08', probability: 75 },
-    { id: 'deal-37', title: 'Healthcare Data Platform', value: 55000, company: 'HealthTech', contact: 'Ellen Parker', closeDate: '2024-08-05', probability: 85 },
-    { id: 'deal-38', title: 'Virtual Reality Training', value: 28000, company: 'VRTech', contact: 'Aiden Scott', closeDate: '2024-09-19', probability: 50 },
-    { id: 'deal-39', title: 'Smart City Solutions', value: 46000, company: 'UrbanTech', contact: 'Grace Lee', closeDate: '2024-07-23', probability: 65 },
-    { id: 'deal-40', title: 'SaaS Platform Development', value: 33000, company: 'SaaSNext', contact: 'Zoe Clark', closeDate: '2024-08-04', probability: 90 },
-    { id: 'deal-41', title: 'IT Infrastructure Upgrade', value: 47000, company: 'TechInfra', contact: 'Miles Davis', closeDate: '2024-09-03', probability: 60 },
-    { id: 'deal-42', title: 'Mobile Payment Gateway', value: 24000, company: 'PayTech', contact: 'Lucas Harris', closeDate: '2024-08-09', probability: 75 },
-    { id: 'deal-43', title: 'Voice Recognition System', value: 31000, company: 'VoiceTech', contact: 'Isabella Carter', closeDate: '2024-09-14', probability: 80 },
-    { id: 'deal-44', title: 'Cloud Storage Service', value: 29000, company: 'CloudStore', contact: 'Liam White', closeDate: '2024-10-15', probability: 50 },
-    { id: 'deal-45', title: 'Customer Engagement Platform', value: 39000, company: 'EngageTech', contact: 'James Wilson', closeDate: '2024-07-02', probability: 65 },
-    { id: 'deal-46', title: 'R&D Lab Setup', value: 24000, company: 'InnovativeTech', contact: 'Natalie Green', closeDate: '2024-08-18', probability: 70 },
-    { id: 'deal-47', title: 'Smart Home Integration', value: 52000, company: 'SmartHomeInc', contact: 'Henry Brown', closeDate: '2024-09-06', probability: 90 },
-    { id: 'deal-48', title: 'IT Support Services', value: 22000, company: 'SupportTech', contact: 'Vera White', closeDate: '2024-07-04', probability: 55 },
-    { id: 'deal-49', title: 'Financial Software Implementation', value: 46000, company: 'FinSoft', contact: 'Daniel Grey', closeDate: '2024-09-11', probability: 60 },
-    { id: 'deal-50', title: 'Mobile Device Management', value: 35000, company: 'MobileTech', contact: 'Chris Jones', closeDate: '2024-08-25', probability: 80 }
-  ];
-
-  const [dealsByMonth, setDealsByMonth] = useState(() => {
-    const map = {};
-    initialDeals.forEach(deal => {
-      const month = new Date(deal.closeDate).toLocaleString('default', { month: 'long' });
-      if (!map[month]) map[month] = [];
-      map[month].push(deal);
-    });
-    return map;
-  });
-
+  const [dealsByMonth, setDealsByMonth] = useState({});
   const [activeDeal, setActiveDeal] = useState(null);
-
   const [columns, setColumns] = useState([]);
   const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Function to get the next 4 months (current + next 3)
+  const getNext4Months = () => {
+    const months = [];
+    const today = new Date();
+    
+    for (let i = 0; i < 4; i++) {
+      const date = new Date(today.getFullYear(), today.getMonth() + i, 1);
+      const monthName = date.toLocaleString('default', { month: 'long' });
+      const year = date.getFullYear();
+      months.push({ name: monthName, year, date });
+    }
+    
+    return months;
+  };
+
+  // Function to check if a date falls within the next 4 months
+  const isWithinNext4Months = (dateString) => {
+    const dealDate = new Date(dateString);
+    const today = new Date();
+    
+    // Start of current month
+    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    // End of the 4th month (current + next 3)
+    const fourthMonthEnd = new Date(today.getFullYear(), today.getMonth() + 4, 0);
+    
+    return dealDate >= currentMonthStart && dealDate <= fourthMonthEnd;
+  };
+
+  // Function to transform Zoho data to deal format
+  const transformZohoDataToDeals = (columns, rows) => {
+    if (!columns || !rows || rows.length === 0) return [];
+
+    // Create column index mapping
+    const columnMap = {};
+    columns.forEach((col, index) => {
+      columnMap[col] = index;
+    });
+
+    // Transform rows to deal objects and filter for next 4 months
+    const deals = rows
+      .map((row, index) => {
+        const deal = {
+          id: `deal-${index + 1}`,
+          potential_id: row[columnMap['Potential ID']],
+          url: row[columnMap['CRM URL']],
+          title: row[columnMap['Potential Name']] || 'Untitled Deal',
+          value: row[columnMap['Total Value']] || 0,
+          company: row[columnMap['Account Name']] || 'Unknown Company',
+          contact: row[columnMap['Contact Role']] || 'Unknown Contact',
+          closeDate: row[columnMap['Date']] || new Date().toISOString().split('T')[0],
+          probability: row[columnMap['Stage']] || 'Unknown Stage',
+        };
+        
+        return deal;
+      })
+      .filter(deal => isWithinNext4Months(deal.closeDate)); // Filter for next 4 months
+
+    return deals;
+  };
+
+  // Function to group deals by month (only for next 4 months)
+  const groupDealsByMonth = (deals) => {
+    const map = {};
+    const next4Months = getNext4Months();
+    
+    // Initialize all 4 months with empty arrays
+    next4Months.forEach(month => {
+      map[month.name] = [];
+    });
+    
+    // Group deals by month
+    deals.forEach(deal => {
+      const date = new Date(deal.closeDate);
+      const month = date.toLocaleString('default', { month: 'long' });
+      
+      // Only add to map if it's one of our target months
+      if (map[month] !== undefined) {
+        map[month].push(deal);
+      }
+    });
+    
+    return map;
+  };
 
   useEffect(() => {
-    fetch('http://localhost:3001/api/zoho')
-      .then((res) => res.json())
-      .then((data) => {
-        // Parse the stringified JSON inside data.details.output
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`https://crm-kanban-893656151.development.catalystserverless.com/server/get-data/api/zoho?name=${encodeURIComponent(name)}`);
+        const data = await response.json();
+        
         if (data.details && data.details.output) {
           const output = JSON.parse(data.details.output);
-          setColumns(output.column_order || []);
-          setRows(output.rows || []);
+          const fetchedColumns = output.column_order || [];
+          const fetchedRows = output.rows || [];
+          
+          setColumns(fetchedColumns);
+          setRows(fetchedRows);
+          
+          // Transform the data to deals format (now filtered for next 4 months)
+          const transformedDeals = transformZohoDataToDeals(fetchedColumns, fetchedRows);
+          
+          // Group deals by month
+          const groupedDeals = groupDealsByMonth(transformedDeals);
+          setDealsByMonth(groupedDeals);
         }
-      })
-      .catch((err) => console.error('Zoho fetch error:', err));
+      } catch (err) {
+        console.error('Zoho fetch error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const sensors = useSensors(
@@ -157,7 +199,7 @@ const CRMPipelineKanban = () => {
 
     // Find the source month
     const sourceMonth = findDealMonth(activeId);
-    if (!sourceMonth) return; // Safety check
+    if (!sourceMonth) return;
 
     // Check if we're dropping over a month column
     if (Object.keys(dealsByMonth).includes(overId)) {
@@ -168,7 +210,7 @@ const CRMPipelineKanban = () => {
           const newMap = { ...prev };
           const sourceDeal = newMap[sourceMonth]?.find(d => d.id === activeId);
           
-          if (!sourceDeal) return prev; // Safety check - don't update if deal not found
+          if (!sourceDeal) return prev;
           
           // Remove from source
           newMap[sourceMonth] = newMap[sourceMonth].filter(d => d.id !== activeId);
@@ -193,7 +235,7 @@ const CRMPipelineKanban = () => {
         const newMap = { ...prev };
         const sourceDeal = newMap[sourceMonth]?.find(d => d.id === activeId);
         
-        if (!sourceDeal) return prev; // Safety check - don't update if deal not found
+        if (!sourceDeal) return prev;
         
         // Remove from source
         newMap[sourceMonth] = newMap[sourceMonth].filter(d => d.id !== activeId);
@@ -204,7 +246,6 @@ const CRMPipelineKanban = () => {
           if (targetIndex >= 0) {
             newMap[targetMonth].splice(targetIndex, 0, sourceDeal);
           } else {
-            // If target not found, just add to end
             newMap[targetMonth].push(sourceDeal);
           }
         } else {
@@ -213,7 +254,6 @@ const CRMPipelineKanban = () => {
           if (targetIndex >= 0) {
             newMap[targetMonth].splice(targetIndex, 0, sourceDeal);
           } else {
-            // If target not found, just add to end
             newMap[targetMonth].push(sourceDeal);
           }
         }
@@ -233,8 +273,22 @@ const CRMPipelineKanban = () => {
   };
 
   const formatCurrency = (value) => {
-    // Handle empty strings and zero values properly
-    const numValue = parseFloat(value);
+    // Handle various string formats and extract numeric value
+    let cleanValue = value;
+    
+    // If it's already a number, use it
+    if (typeof value === 'number') {
+      cleanValue = value;
+    } else if (typeof value === 'string') {
+      // Remove common currency symbols, spaces, and commas
+      cleanValue = value.replace(/[R$€£¥,\s]/g, '');
+      // Handle cases where value might be empty or contain only non-numeric characters
+      if (cleanValue === '' || cleanValue === null || cleanValue === undefined) {
+        return "-";
+      }
+    }
+    
+    const numValue = parseFloat(cleanValue);
     if (isNaN(numValue) || numValue === 0) {
       return "-";
     }
@@ -245,10 +299,16 @@ const CRMPipelineKanban = () => {
     }).format(numValue);
   };
 
-  // Helper function to calculate totals properly
   const calculateTotal = (deals) => {
     return deals.reduce((sum, deal) => {
-      const numValue = parseFloat(deal.value);
+      let cleanValue = deal.value;
+      
+      // Handle string values by cleaning them
+      if (typeof deal.value === 'string') {
+        cleanValue = deal.value.replace(/[R$€£¥,\s]/g, '');
+      }
+      
+      const numValue = parseFloat(cleanValue);
       return sum + (isNaN(numValue) ? 0 : numValue);
     }, 0);
   };
@@ -287,9 +347,11 @@ const CRMPipelineKanban = () => {
           </div>
         </div>
         <div className="mt-3 flex justify-between items-center">
-           <div className="text-xs text-gray-500">Probability: <span className="font-medium">{deal.probability}%</span></div>
+          <div className="text-xs text-gray-500">
+            Stage: <span className="font-medium">{deal.probability}</span>
+          </div>
           <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-xs font-medium">
-            {deal.contact.split(' ').map(n => n[0]).join('')}
+            {deal.contact.split(' ').map(n => n[0]).join('').substring(0, 2)}
           </div>
         </div>
       </div>
@@ -318,20 +380,29 @@ const CRMPipelineKanban = () => {
     );
   };
 
+  if (loading) {
+    return (
+      <div className="h-screen w-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading Zoho deals...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <>
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragStart={handleDragStart}
-      // onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <div className="h-screen w-screen bg-gray-50 flex flex-col">
         <div className="bg-white shadow-sm border-b p-4 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">Monthly Deals</h1>
-            <p className="text-gray-600">Ongoing potentials grouped by close month</p>
+            <p className="text-gray-600">Zoho potentials for current and next 3 months</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -342,39 +413,28 @@ const CRMPipelineKanban = () => {
                 className="pl-10 pr-4 py-2 border rounded-lg"
               />
             </div>
+            {/*
             <button className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-100">
               <Filter className="w-4 h-4" />
               Filter
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700">
-              <Plus className="w-4 h-4" />
-              Add Deal
+            */}
+            <p className='text-sm'>Viewing as:</p>
+            <button className="flex items-center gap-2 px-4 py-2 rounded-lg">
+              <User className="w-4 h-4" /> {name}
             </button>
           </div>
         </div>
 
         <div className="flex-1 overflow-x-auto">
           <div className="flex gap-6 p-6 h-full">
-            {Object.entries(dealsByMonth).map(([month, monthDeals], index) => (
-              <div key={month} className="flex-shrink-0 w-80 h-full">
-                <DroppableMonth
-                  month={month}
-                  colorClass={monthColors[index % monthColors.length]}
-                >
-                  {monthDeals}
-                </DroppableMonth>
+            {Object.keys(dealsByMonth).length === 0 ? (
+              <div className="flex items-center justify-center w-full h-full">
+                <p className="text-gray-500">No deals found for the next 4 months...</p>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/*
-        <div className="flex-1 overflow-x-auto">
-          <div className="flex h-full min-w-full">
-            {Object.entries(dealsByMonth).map(([month, monthDeals], index) => {
-              const columnWidth = `${100 / Object.keys(dealsByMonth).length}%`;
-              return (
-                <div key={month} className="h-full p-3" style={{ width: columnWidth, minWidth: '320px' }}>
+            ) : (
+              Object.entries(dealsByMonth).map(([month, monthDeals], index) => (
+                <div key={month} className="flex-1 min-w-0 h-full">
                   <DroppableMonth
                     month={month}
                     colorClass={monthColors[index % monthColors.length]}
@@ -382,15 +442,14 @@ const CRMPipelineKanban = () => {
                     {monthDeals}
                   </DroppableMonth>
                 </div>
-              );
-            })}
+              ))
+            )}
           </div>
         </div>
-        */}
 
         <div className="bg-white border-t p-4 text-sm flex items-center justify-between">
           <div>
-            Total Value:{' '}
+            Total Value (Next 4 Months):{' '}
             <span className="text-green-600 font-semibold">
               {formatCurrency(calculateTotal(Object.values(dealsByMonth).flat()))}
             </span>
@@ -410,51 +469,6 @@ const CRMPipelineKanban = () => {
         </DragOverlay>
       </div>
     </DndContext>
-        <div className="mt-12">
-  <h2 className="text-xl font-bold mb-4">Zoho Potentials Table</h2>
-  <div className="overflow-x-auto border rounded-lg shadow">
-    <table className="min-w-full divide-y divide-gray-200 text-sm text-left">
-      <thead className="bg-gray-100">
-        <tr>
-          {columns.map((col, i) => (
-            <th
-              key={i}
-              className="px-4 py-2 font-medium text-gray-600 whitespace-nowrap"
-            >
-              {col.replace(/_/g, ' ')}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-gray-100 bg-white">
-        {rows.length === 0 ? (
-          <tr>
-            <td
-              colSpan={columns.length}
-              className="px-4 py-4 text-gray-500 italic text-center"
-            >
-              Loading Zoho deals...
-            </td>
-          </tr>
-        ) : (
-          rows.map((row, rowIndex) => (
-            <tr key={rowIndex}>
-              {row.map((cell, cellIndex) => (
-                <td key={cellIndex} className="px-4 py-2 whitespace-nowrap">
-                  {typeof cell === 'number' && columns[cellIndex] === 'Amount'
-                    ? `R ${cell.toLocaleString()}`
-                    : cell || '-'}
-                </td>
-              ))}
-            </tr>
-          ))
-        )}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-    </>
   );
 };
 
