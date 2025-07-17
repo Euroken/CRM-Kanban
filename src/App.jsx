@@ -38,14 +38,100 @@ const monthColors = [
   'bg-lime-50 border-lime-200',
 ];
 
-const name = 'Themba Zungu';
-
 const CRMPipelineKanban = () => {
   const [dealsByMonth, setDealsByMonth] = useState({});
   const [activeDeal, setActiveDeal] = useState(null);
   const [columns, setColumns] = useState([]);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userLoading, setUserLoading] = useState(true);
+
+  // Function to get current user from Zoho CRM
+  const getCurrentUser = async () => {
+    try {
+      console.log('🔄 Starting getCurrentUser function...');
+      setUserLoading(true);
+      
+      // Check if ZOHO SDK is loaded
+      if (typeof ZOHO === 'undefined') {
+        console.error('❌ ZOHO SDK not loaded. Make sure to include: https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js');
+        throw new Error('ZOHO SDK not available');
+      }
+      
+      console.log('✅ ZOHO SDK detected');
+      
+      // Check if CRM and CONFIG are available
+      if (!ZOHO.CRM || !ZOHO.CRM.CONFIG) {
+        console.error('❌ ZOHO.CRM.CONFIG not available');
+        throw new Error('ZOHO.CRM.CONFIG not available');
+      }
+      
+      console.log('✅ ZOHO.CRM.CONFIG available');
+      
+      // Initialize the SDK first (important for embedded widgets)
+      if (ZOHO.embeddedApp && ZOHO.embeddedApp.init) {
+        console.log('🔄 Initializing ZOHO embedded app...');
+        await ZOHO.embeddedApp.init();
+        console.log('✅ ZOHO embedded app initialized');
+      }
+      
+      console.log('🔄 Calling ZOHO.CRM.CONFIG.getCurrentUser()...');
+      
+      // Correct Promise-based approach
+      const userResponse = await ZOHO.CRM.CONFIG.getCurrentUser();
+      
+      console.log('✅ getCurrentUser response:', userResponse);
+      
+      // Parse the response according to Zoho documentation
+      if (userResponse && userResponse.users && userResponse.users.length > 0) {
+        const userData = userResponse.users[0];
+        console.log('📊 User data:', userData);
+        
+        const currentUserData = {
+          id: userData.id,
+          name: userData.full_name || userData.name || `${userData.first_name || ''} ${userData.last_name || ''}`.trim(),
+          email: userData.email,
+          profile: userData.profile,
+          role: userData.role
+        };
+        
+        console.log('✅ Processed current user:', currentUserData);
+        setCurrentUser(currentUserData);
+        
+      } else {
+        console.error('❌ No user data in response:', userResponse);
+        throw new Error('No user data returned from Zoho');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error in getCurrentUser:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        zohoAvailable: typeof ZOHO !== 'undefined',
+        crmAvailable: typeof ZOHO !== 'undefined' && !!ZOHO.CRM,
+        configAvailable: typeof ZOHO !== 'undefined' && !!ZOHO.CRM?.CONFIG
+      });
+      
+      // Enhanced fallback with more info
+      const fallbackUser = {
+        id: 'fallback_user',
+        name: 'Themba Zungu',
+        email: 'themba@example.com',
+        profile: { name: 'Administrator' },
+        role: { name: 'CEO' },
+        isFallback: true
+      };
+      
+      console.log('🔄 Using fallback user:', fallbackUser);
+      setCurrentUser(fallbackUser);
+      
+    } finally {
+      setUserLoading(false);
+      console.log('✅ getCurrentUser function completed');
+    }
+  };
 
   // Function to get the next 4 months (current + next 3)
   const getNext4Months = () => {
@@ -133,10 +219,16 @@ const CRMPipelineKanban = () => {
   };
 
   useEffect(() => {
+    getCurrentUser();
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`https://crm-kanban-893656151.development.catalystserverless.com/server/get-data/api/zoho?name=${encodeURIComponent(name)}`);
+        const response = await fetch(`https://crm-kanban-893656151.development.catalystserverless.com/server/get-data/api/zoho?name=${encodeURIComponent(currentUser.name)}`);
         const data = await response.json();
         
         if (data.details && data.details.output) {
@@ -162,7 +254,7 @@ const CRMPipelineKanban = () => {
     };
 
     fetchData();
-  }, []);
+  }, [currentUser]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -380,12 +472,14 @@ const CRMPipelineKanban = () => {
     );
   };
 
-  if (loading) {
+  if (loading || userLoading) {
     return (
       <div className="h-screen w-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading Zoho deals...</p>
+          <p className="text-gray-600">
+            {userLoading ? 'Loading user information...' : 'Loading Zoho deals...'}
+          </p>
         </div>
       </div>
     );
@@ -421,7 +515,7 @@ const CRMPipelineKanban = () => {
             */}
             <p className='text-sm'>Viewing as:</p>
             <button className="flex items-center gap-2 px-4 py-2 rounded-lg">
-              <User className="w-4 h-4" /> {name}
+              <User className="w-4 h-4" /> {currentUser?.name || 'Loading...'}
             </button>
           </div>
         </div>
