@@ -35,6 +35,8 @@ const monthColors = [
 const CRMPipelineKanban = () => {
   const [dealsByMonth, setDealsByMonth] = useState({});
   const [activeDeal, setActiveDeal] = useState(null);
+  const [columns, setColumns] = useState([]);
+  const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [userLoading, setUserLoading] = useState(true);
@@ -177,34 +179,32 @@ const CRMPipelineKanban = () => {
     return dealDate >= currentMonthStart && dealDate <= fourthMonthEnd;
   };
 
-  // Function to transform new Zoho data format to deal format
-  const transformZohoDataToDeals = (rawDeals) => {
-    if (!rawDeals || rawDeals.length === 0) return [];
+  // Function to transform Zoho data to deal format
+  const transformZohoDataToDeals = (columns, rows) => {
+    if (!columns || !rows || rows.length === 0) return [];
 
-    // Transform raw deals to deal objects and filter for next 4 months
-    const deals = rawDeals
-      .map((deal, index) => {
-        const transformedDeal = {
-          id: deal.id || `deal-${index + 1}`,
-          potential_id: deal.Potential_No || deal.id,
-          title: deal.Deal_Name || 'Untitled Deal',
-          value: deal.Amount || 0,
-          company: deal.Account_Name?.name || 'Unknown Company',
-          contact: deal.Contact_Name?.name || 'Unknown Contact',
-          closeDate: deal.Closing_Date || new Date().toISOString().split('T')[0],
-          stage: deal.Stage || 'Unknown Stage',
-          probability: deal.Probability || 0,
-          owner: deal.Owner?.name || 'Unknown Owner',
-          currency: deal.Currency || 'ZAR',
-          expectedRevenue: deal.Expected_Revenue || 0,
-          createdBy: deal.Created_By?.name || 'Unknown',
-          modifiedTime: deal.Modified_Time || deal.Created_Time,
-          leadSource: deal.Lead_Source || 'Unknown',
-          industry: deal.Industry || 'Unknown',
-          region: deal.Region || 'Unknown'
+    // Create column index mapping
+    const columnMap = {};
+    columns.forEach((col, index) => {
+      columnMap[col] = index;
+    });
+
+    // Transform rows to deal objects and filter for next 4 months
+    const deals = rows
+      .map((row, index) => {
+        const deal = {
+          id: `deal-${index + 1}`,
+          potential_id: row[columnMap['Potential ID']],
+          url: row[columnMap['CRM URL']],
+          title: row[columnMap['Potential Name']] || 'Untitled Deal',
+          value: row[columnMap['Total Value']] || 0,
+          company: row[columnMap['Account Name']] || 'Unknown Company',
+          contact: row[columnMap['Contact Role']] || 'Unknown Contact',
+          closeDate: row[columnMap['Date']] || new Date().toISOString().split('T')[0],
+          probability: row[columnMap['Stage']] || 'Unknown Stage',
         };
         
-        return transformedDeal;
+        return deal;
       })
       .filter(deal => isWithinNext4Months(deal.closeDate)); // Filter for next 4 months
 
@@ -242,71 +242,75 @@ const CRMPipelineKanban = () => {
   useEffect(() => {
     if (!currentUser) return;
 
-    const fetchData = () => {
-      setLoading(true);
-
-      const stageConditions = [
-        '(Stage:equals:Initial Contact)',
-        '(Stage:equals:Qualification)',
-        '(Stage:equals:Awaiting Quote - Product)',
-        '(Stage:equals:Awaiting Quote - Services)',
-        '(Stage:equals:Quoted)',
-        '(Stage:equals:Upside)',
-        '(Stage:equals:Commit)',
-        '(Stage:equals:At Risk)',
-      ];
-
-      const stageQuery = `${stageConditions.join('or')}`;
-      const ownerQuery = `(Owner:equals:${currentUser.name})`;
-      const searchQuery = `(${ownerQuery}and${stageQuery})`;
-
-      console.log('Search Query:', searchQuery);
-
-      ZOHO.CRM.API.searchRecord({
-        Entity: 'Deals',
-        Type: 'criteria',
-        Query: searchQuery,
-      }).then(function(response) {
-        console.log('Full Zoho API Response:', response);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`https://crm-kanban-893656151.development.catalystserverless.com/server/get-data/api/zoho?name=${encodeURIComponent(currentUser.name)}`);
+        const data = await response.json();
         
-        if (response && response.data && response.data.length > 0) {
-          const rawDeals = response.data;
-          console.log(`Raw Deals for ${currentUser.name} with Open-like stages:`, rawDeals);
+        if (data.details && data.details.output) {
+          const output = JSON.parse(data.details.output);
+          const fetchedColumns = output.column_order || [];
+          const fetchedRows = output.rows || [];
+          
+          setColumns(fetchedColumns);
+          setRows(fetchedRows);
           
           // Transform the data to deals format (now filtered for next 4 months)
-          const transformedDeals = transformZohoDataToDeals(rawDeals);
-          console.log('Transformed Deals:', transformedDeals);
+          const transformedDeals = transformZohoDataToDeals(fetchedColumns, fetchedRows);
           
           // Group deals by month
           const groupedDeals = groupDealsByMonth(transformedDeals);
-          console.log('Grouped Deals by Month:', groupedDeals);
-          
           setDealsByMonth(groupedDeals);
-        } else {
-          console.warn('No data returned from Zoho CRM search.');
-          // Initialize empty months
-          const next4Months = getNext4Months();
-          const emptyMap = {};
-          next4Months.forEach(month => {
-            emptyMap[month.name] = [];
-          });
-          setDealsByMonth(emptyMap);
         }
-      }).catch(function(error) {
-        console.error('Zoho SDK fetch error:', error);
-        // Initialize empty months on error
-        const next4Months = getNext4Months();
-        const emptyMap = {};
-        next4Months.forEach(month => {
-          emptyMap[month.name] = [];
-        });
-        setDealsByMonth(emptyMap);
-      }).finally(function() {
+      } catch (err) {
+        console.error('Zoho fetch error:', err);
+      } finally {
         setLoading(false);
-      });
+      }
     };
 
+const fetchData2 = () => {
+  setLoading(true);
+
+  const stageConditions = [
+    '(Stage:equals:Initial Contact)',
+    '(Stage:equals:Qualification)',
+    '(Stage:equals:Awaiting Quote - Product)',
+    '(Stage:equals:Awaiting Quote - Services)',
+    '(Stage:equals:Quoted)',
+    '(Stage:equals:Upside)',
+    '(Stage:equals:Commit)',
+    '(Stage:equals:At Risk)',
+  ];
+
+  const stageQuery = `${stageConditions.join('or')}`;
+  const ownerQuery = '(Owner:equals:Themba Zungu)';
+  const searchQuery = `(${ownerQuery}and${stageQuery})`;
+
+  console.log(searchQuery)
+
+  ZOHO.CRM.API.searchRecord({
+    Entity: 'Deals',
+    Type: 'criteria',
+    Query: searchQuery,
+  }).then(function(response) {
+    if (response && response.data && response.data.length > 0) {
+      const rawDeals = response.data;
+      console.log('Raw Deals for Themba Zungu with Open-like stages:', rawDeals);
+
+    } else {
+      console.warn('No data returned from Zoho CRM search.');
+    }
+  }).catch(function(error) {
+    console.error('Zoho SDK fetch error:', error);
+  }).finally(function() {
+  });
+};
+
     fetchData();
+    fetchData2();
+
   }, [currentUser]);
 
   const sensors = useSensors(
@@ -418,7 +422,7 @@ const CRMPipelineKanban = () => {
   };
 
   const formatCurrency = (value) => {
-    // Handle various formats and extract numeric value
+    // Handle various string formats and extract numeric value
     let cleanValue = value;
     
     // If it's already a number, use it
@@ -481,7 +485,6 @@ const CRMPipelineKanban = () => {
         <div className="space-y-2 text-xs text-gray-600">
           <div className="flex items-center gap-1">
             <span className="text-green-600 font-medium">{formatCurrency(deal.value)}</span>
-            <span className="text-gray-500">({deal.probability}%)</span>
           </div>
           <div className="flex items-center gap-1">
             <User className="w-3 h-3" />
@@ -494,7 +497,7 @@ const CRMPipelineKanban = () => {
         </div>
         <div className="mt-3 flex justify-between items-center">
           <div className="text-xs text-gray-500">
-            Stage: <span className="font-medium">{deal.stage}</span>
+            Stage: <span className="font-medium">{deal.probability}</span>
           </div>
           <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-xs font-medium">
             {deal.contact.split(' ').map(n => n[0]).join('').substring(0, 2)}
@@ -561,6 +564,12 @@ const CRMPipelineKanban = () => {
                 className="pl-10 pr-4 py-2 border rounded-lg"
               />
             </div>
+            {/*
+            <button className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-100">
+              <Filter className="w-4 h-4" />
+              Filter
+            </button>
+            */}
             <p className='text-sm'>Viewing as:</p>
             <button className="flex items-center gap-2 px-4 py-2 rounded-lg">
               <User className="w-4 h-4" /> {currentUser?.name || 'Loading...'}
