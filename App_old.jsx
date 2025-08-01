@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -7,546 +7,262 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
+  closestCorners,
+  pointerWithin,
+  rectIntersection,
 } from '@dnd-kit/core';
 import {
-  arrayMove,
-  SortableContext,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
+  arrayMove,
 } from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import {
-  Plus,
-  Filter,
   Search,
-  MoreHorizontal,
   User,
-  Calendar,
 } from 'lucide-react';
 
-const monthColors = [
-  'bg-blue-50 border-blue-200',
-  'bg-green-50 border-green-200',
-  'bg-yellow-50 border-yellow-200',
-  'bg-pink-50 border-pink-200',
-];
+import { useCurrentUser } from './hooks/useCurrentUser';
+import { useZohoCRMData } from './hooks/useZohoCRMData';
+import { DroppableMonth } from './components/DroppableMonth';
+import { monthColors } from './constants/colors';
+import { formatCurrency, calculateTotal } from './utils/helpers';
 
 const CRMPipelineKanban = () => {
-  const [dealsByMonth, setDealsByMonth] = useState({});
+  const { currentUser, userLoading, accessDenied } = useCurrentUser(); // Get accessDenied state
+  const { dealsByMonth, loading, setDealsByMonth } = useZohoCRMData(currentUser);
   const [activeDeal, setActiveDeal] = useState(null);
-  const [columns, setColumns] = useState([]);
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [userLoading, setUserLoading] = useState(true);
-
-  // Function to get current user from Zoho CRM
-  const getCurrentUser = async () => {
-    console.log('🔄 Starting getCurrentUser function...');
-    setUserLoading(true);
-    
-    const fallbackUser = {
-      id: '3531584000057713001',
-      name: 'Themba Zungu',
-      email: 'zungu.t@itrtech.africa',
-      profile: { name: 'Retentions' },
-      role: { name: 'Sales' },
-      isFallback: true
-    };
-    
-    // Set a timeout to use fallback user if Zoho takes too long or fails
-    const fallbackTimeout = setTimeout(() => {
-      console.log('🔄 Using fallback user after timeout');
-      setCurrentUser(fallbackUser);
-      setUserLoading(false);
-    }, 3000);
-    
-    try {
-      // Check if ZOHO SDK is loaded
-      if (typeof ZOHO === 'undefined') {
-        console.error('❌ ZOHO SDK not loaded. Using fallback user immediately.');
-        clearTimeout(fallbackTimeout);
-        setCurrentUser(fallbackUser);
-        setUserLoading(false);
-        return;
-      }
-      
-      console.log('✅ ZOHO SDK detected');
-      
-      // Check if CRM and CONFIG are available
-      if (!ZOHO.CRM || !ZOHO.CRM.CONFIG) {
-        console.error('❌ ZOHO.CRM.CONFIG not available. Using fallback user immediately.');
-        clearTimeout(fallbackTimeout);
-        setCurrentUser(fallbackUser);
-        setUserLoading(false);
-        return;
-      }
-      
-      console.log('✅ ZOHO.CRM.CONFIG available');
-      
-      // Initialize the SDK first (important for embedded widgets)
-      if (ZOHO.embeddedApp && ZOHO.embeddedApp.init) {
-        console.log('🔄 Initializing ZOHO embedded app...');
-        try {
-          await Promise.race([
-            ZOHO.embeddedApp.init(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Init timeout')), 3000))
-          ]);
-          console.log('✅ ZOHO embedded app initialized');
-        } catch (initError) {
-          console.error('❌ ZOHO embedded app init failed:', initError);
-          // Continue anyway, might still work
-        }
-      }
-      
-      console.log('🔄 Calling ZOHO.CRM.CONFIG.getCurrentUser()...');
-      
-      // Add timeout wrapper for the getCurrentUser call
-      const userResponse = await Promise.race([
-        ZOHO.CRM.CONFIG.getCurrentUser(),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('getCurrentUser timeout')), 3500)
-        )
-      ]);
-      
-      console.log('✅ getCurrentUser response:', userResponse);
-      
-      // Parse the response according to Zoho documentation
-      if (userResponse && userResponse.users && userResponse.users.length > 0) {
-        const userData = userResponse.users[0];
-        console.log('📊 User data:', userData);
-        
-        const currentUserData = {
-          id: userData.id,
-          name: userData.full_name || userData.name || `${userData.first_name || ''} ${userData.last_name || ''}`.trim(),
-          email: userData.email,
-          profile: userData.profile,
-          role: userData.role
-        };
-        
-        console.log('✅ Processed current user:', currentUserData);
-        clearTimeout(fallbackTimeout);
-        setCurrentUser(currentUserData);
-        setUserLoading(false);
-        
-      } else {
-        console.error('❌ No user data in response:', userResponse);
-        throw new Error('No user data returned from Zoho');
-      }
-      
-    } catch (error) {
-      console.error('❌ Error in getCurrentUser:', error);
-      
-      // Only set fallback if the timeout hasn't already fired
-      if (userLoading) {
-        clearTimeout(fallbackTimeout);
-        console.log('🔄 Using fallback user due to error');
-        setCurrentUser(fallbackUser);
-        setUserLoading(false);
-      }
-    }
-    
-    console.log('✅ getCurrentUser function completed');
-  };
-
-  // Function to get the next 4 months (current + next 3)
-  const getNext4Months = () => {
-    const months = [];
-    const today = new Date();
-    
-    for (let i = 0; i < 4; i++) {
-      const date = new Date(today.getFullYear(), today.getMonth() + i, 1);
-      const monthName = date.toLocaleString('default', { month: 'long' });
-      const year = date.getFullYear();
-      months.push({ name: monthName, year, date });
-    }
-    
-    return months;
-  };
-
-  // Function to check if a date falls within the next 4 months
-  const isWithinNext4Months = (dateString) => {
-    const dealDate = new Date(dateString);
-    const today = new Date();
-    
-    // Start of current month
-    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    
-    // End of the 4th month (current + next 3)
-    const fourthMonthEnd = new Date(today.getFullYear(), today.getMonth() + 4, 0);
-    
-    return dealDate >= currentMonthStart && dealDate <= fourthMonthEnd;
-  };
-
-  // Function to transform Zoho data to deal format
-  const transformZohoDataToDeals = (columns, rows) => {
-    if (!columns || !rows || rows.length === 0) return [];
-
-    // Create column index mapping
-    const columnMap = {};
-    columns.forEach((col, index) => {
-      columnMap[col] = index;
-    });
-
-    // Transform rows to deal objects and filter for next 4 months
-    const deals = rows
-      .map((row, index) => {
-        const deal = {
-          id: `deal-${index + 1}`,
-          potential_id: row[columnMap['Potential ID']],
-          url: row[columnMap['CRM URL']],
-          title: row[columnMap['Potential Name']] || 'Untitled Deal',
-          value: row[columnMap['Total Value']] || 0,
-          company: row[columnMap['Account Name']] || 'Unknown Company',
-          contact: row[columnMap['Contact Role']] || 'Unknown Contact',
-          closeDate: row[columnMap['Date']] || new Date().toISOString().split('T')[0],
-          probability: row[columnMap['Stage']] || 'Unknown Stage',
-        };
-        
-        return deal;
-      })
-      .filter(deal => isWithinNext4Months(deal.closeDate)); // Filter for next 4 months
-
-    return deals;
-  };
-
-  // Function to group deals by month (only for next 4 months)
-  const groupDealsByMonth = (deals) => {
-    const map = {};
-    const next4Months = getNext4Months();
-    
-    // Initialize all 4 months with empty arrays
-    next4Months.forEach(month => {
-      map[month.name] = [];
-    });
-    
-    // Group deals by month
-    deals.forEach(deal => {
-      const date = new Date(deal.closeDate);
-      const month = date.toLocaleString('default', { month: 'long' });
-      
-      // Only add to map if it's one of our target months
-      if (map[month] !== undefined) {
-        map[month].push(deal);
-      }
-    });
-    
-    return map;
-  };
-
-  useEffect(() => {
-    getCurrentUser();
-  }, []);
-
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`https://crm-kanban-893656151.development.catalystserverless.com/server/get-data/api/zoho?name=${encodeURIComponent(currentUser.name)}`);
-        const data = await response.json();
-        
-        if (data.details && data.details.output) {
-          const output = JSON.parse(data.details.output);
-          const fetchedColumns = output.column_order || [];
-          const fetchedRows = output.rows || [];
-          
-          setColumns(fetchedColumns);
-          setRows(fetchedRows);
-          
-          // Transform the data to deals format (now filtered for next 4 months)
-          const transformedDeals = transformZohoDataToDeals(fetchedColumns, fetchedRows);
-          
-          // Group deals by month
-          const groupedDeals = groupDealsByMonth(transformedDeals);
-          setDealsByMonth(groupedDeals);
-        }
-      } catch (err) {
-        console.error('Zoho fetch error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-const fetchData2 = () => {
-  setLoading(true);
-
-  const stageConditions = [
-    '(Stage:equals:Initial Contact)',
-    '(Stage:equals:Qualification)',
-    '(Stage:equals:Awaiting Quote - Product)',
-    '(Stage:equals:Awaiting Quote - Services)',
-    '(Stage:equals:Quoted)',
-    '(Stage:equals:Upside)',
-    '(Stage:equals:Commit)',
-    '(Stage:equals:At Risk)',
-  ];
-
-  const stageQuery = `${stageConditions.join('or')}`;
-  const ownerQuery = '(Owner:equals:Themba Zungu)';
-  const searchQuery = `(${ownerQuery}and${stageQuery})`;
-
-  console.log(searchQuery)
-
-  ZOHO.CRM.API.searchRecord({
-    Entity: 'Deals',
-    Type: 'criteria',
-    Query: searchQuery,
-  }).then(function(response) {
-    if (response && response.data && response.data.length > 0) {
-      const rawDeals = response.data;
-      console.log('Raw Deals for Themba Zungu with Open-like stages:', rawDeals);
-
-    } else {
-      console.warn('No data returned from Zoho CRM search.');
-    }
-  }).catch(function(error) {
-    console.error('Zoho SDK fetch error:', error);
-  }).finally(function() {
-  });
-};
-
-    fetchData();
-    fetchData2();
-
-  }, [currentUser]);
+  const [activeContainer, setActiveContainer] = useState(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Require 8px of movement to start dragging
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
-  const findDealMonth = (dealId) => {
-    for (const [month, deals] of Object.entries(dealsByMonth)) {
-      if (deals && deals.find(d => d.id === dealId)) return month;
+  // Custom collision detection algorithm
+  const collisionDetectionStrategy = (args) => {
+    if (activeContainer) {
+      return closestCenter({
+        ...args,
+        droppableContainers: args.droppableContainers.filter(
+          (container) => container.id in dealsByMonth
+        ),
+      });
     }
+
+    // Start by finding any intersecting droppable
+    const pointerIntersections = pointerWithin(args);
+    const intersections = pointerIntersections.length > 0
+      ? pointerIntersections
+      : rectIntersection(args);
+
+    let overId = null;
+
+    if (intersections.length > 0) {
+      overId = intersections[0].id;
+
+      if (overId in dealsByMonth) {
+        const containerItems = dealsByMonth[overId];
+
+        if (containerItems.length > 0) {
+          overId = closestCenter({
+            ...args,
+            droppableContainers: args.droppableContainers.filter(
+              (container) => container.id !== overId && containerItems.map(item => item.id).includes(container.id)
+            ),
+          })[0]?.id || overId;
+        }
+      }
+    }
+
+    return overId ? [{ id: overId }] : [];
+  };
+
+  const findContainer = (id) => {
+    if (id in dealsByMonth) {
+      return id;
+    }
+
+    for (const [containerId, items] of Object.entries(dealsByMonth)) {
+      if (items.find(item => item.id === id)) {
+        return containerId;
+      }
+    }
+
     return null;
   };
 
   const handleDragStart = (event) => {
     const { active } = event;
-    const dealId = active.id;
-    const month = findDealMonth(dealId);
-    if (month) {
-      const deal = dealsByMonth[month].find(d => d.id === dealId);
+    const { id } = active;
+
+    console.log('Drag Start: Active ID:', id); // Log active ID
+
+    if (id in dealsByMonth) {
+      console.log(`Drag Start: Active ID "${id}" is a month container.`);
+      setActiveContainer(id);
+      return;
+    }
+
+    const container = findContainer(id);
+    if (container) {
+      const deal = dealsByMonth[container].find(item => item.id === id);
+      console.log(`Drag Start: Active ID "${id}" is a deal. Container ID: "${container}", Deal details:`, deal);
       setActiveDeal(deal);
+    } else {
+      console.log(`Drag Start: Active ID "${id}" not found in any container.`);
+    }
+  };
+
+  const handleDragOver = (event) => {
+    const { active, over } = event;
+    const { id: activeId } = active;
+    const overId = over?.id;
+
+    console.log(`Drag Over: Active ID: "${activeId}", Over ID: "${overId}"`); // Log active and over IDs
+
+    if (!overId || activeId === overId) {
+      return;
+    }
+
+    const activeContainer = findContainer(activeId);
+    const overContainer = findContainer(overId);
+
+    console.log(`Drag Over: Active Container: "${activeContainer}", Over Container: "${overContainer}"`); // Log active and over containers
+
+    if (!activeContainer || !overContainer) {
+      console.log('Drag Over: Could not find active or over container.');
+      return;
+    }
+
+    if (activeContainer !== overContainer) {
+      console.log(`Drag Over: Moving deal from "${activeContainer}" to "${overContainer}".`);
+      setDealsByMonth(prev => {
+        const activeItems = prev[activeContainer];
+        const overItems = prev[overContainer];
+
+        const activeIndex = activeItems.findIndex(item => item.id === activeId);
+        const overIndex = overId in prev
+          ? overItems.length + 1
+          : overItems.findIndex(item => item.id === overId);
+
+        let newIndex;
+        if (overId in prev) {
+          newIndex = overItems.length + 1;
+        } else {
+          const isBelowOverItem = over &&
+            activeIndex > overIndex &&
+            event.delta.y > 0;
+
+          newIndex = overIndex >= 0
+            ? overIndex + (isBelowOverItem ? 1 : 0)
+            : overItems.length + 1;
+        }
+
+        console.log(`Drag Over: Active Index: ${activeIndex}, Over Index: ${overIndex}, New Index: ${newIndex}`);
+
+        return {
+          ...prev,
+          [activeContainer]: prev[activeContainer].filter(item => item.id !== activeId),
+          [overContainer]: [
+            ...prev[overContainer].slice(0, newIndex),
+            activeItems[activeIndex],
+            ...prev[overContainer].slice(newIndex, prev[overContainer].length),
+          ],
+        };
+      });
     }
   };
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
+    const { id: activeId } = active;
+    const overId = over?.id;
+
+    console.log(`Drag End: Active ID: "${activeId}", Over ID: "${overId}"`); // Log active and over IDs
+
     setActiveDeal(null);
-    
-    if (!over) return;
+    setActiveContainer(null);
 
-    const activeId = active.id;
-    const overId = over.id;
-
-    // Find the source month
-    const sourceMonth = findDealMonth(activeId);
-    if (!sourceMonth) return;
-
-    // Check if we're dropping over a month column
-    if (Object.keys(dealsByMonth).includes(overId)) {
-      const targetMonth = overId;
-      
-      if (sourceMonth !== targetMonth) {
-        setDealsByMonth(prev => {
-          const newMap = { ...prev };
-          const sourceDeal = newMap[sourceMonth]?.find(d => d.id === activeId);
-          
-          if (!sourceDeal) return prev;
-          
-          // Remove from source
-          newMap[sourceMonth] = newMap[sourceMonth].filter(d => d.id !== activeId);
-          
-          // Add to target
-          if (!newMap[targetMonth]) {
-            newMap[targetMonth] = [];
-          }
-          newMap[targetMonth] = [...newMap[targetMonth], sourceDeal];
-          
-          return newMap;
-        });
-      }
+    if (!overId) {
+      console.log('Drag End: No over ID, drag cancelled or dropped outside.');
       return;
     }
 
-    // Check if we're dropping over another deal (for repositioning)
-    const targetMonth = findDealMonth(overId);
-    
-    if (targetMonth && sourceMonth) {
+    const activeContainer = findContainer(activeId);
+    const overContainer = findContainer(overId);
+
+    console.log(`Drag End: Active Container: "${activeContainer}", Over Container: "${overContainer}"`); // Log active and over containers
+
+    if (!activeContainer || !overContainer) {
+      console.log('Drag End: Could not find active or over container.');
+      return;
+    }
+
+    if (activeContainer === overContainer) {
+      console.log(`Drag End: Reordering deal within "${activeContainer}".`);
       setDealsByMonth(prev => {
-        const newMap = { ...prev };
-        const sourceDeal = newMap[sourceMonth]?.find(d => d.id === activeId);
-        
-        if (!sourceDeal) return prev;
-        
-        // Remove from source
-        newMap[sourceMonth] = newMap[sourceMonth].filter(d => d.id !== activeId);
-        
-        if (sourceMonth === targetMonth) {
-          // Reordering within the same month
-          const targetIndex = newMap[targetMonth].findIndex(d => d.id === overId);
-          if (targetIndex >= 0) {
-            newMap[targetMonth].splice(targetIndex, 0, sourceDeal);
-          } else {
-            newMap[targetMonth].push(sourceDeal);
-          }
-        } else {
-          // Moving to a different month
-          const targetIndex = newMap[targetMonth].findIndex(d => d.id === overId);
-          if (targetIndex >= 0) {
-            newMap[targetMonth].splice(targetIndex, 0, sourceDeal);
-          } else {
-            newMap[targetMonth].push(sourceDeal);
-          }
-        }
-        
-        return newMap;
+        const activeIndex = prev[activeContainer].findIndex(item => item.id === activeId);
+        const overIndex = prev[overContainer].findIndex(item => item.id === overId);
+        console.log(`Drag End: Active Index: ${activeIndex}, Over Index: ${overIndex}`);
+
+        return {
+          ...prev,
+          [overContainer]: arrayMove(prev[overContainer], activeIndex, overIndex),
+        };
       });
+    } else {
+      console.log('Drag End: Deal was moved between different containers (handled by dragOver).');
     }
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: '2-digit',
-    }).format(date);
-  };
-
-  const formatCurrency = (value) => {
-    // Handle various string formats and extract numeric value
-    let cleanValue = value;
-    
-    // If it's already a number, use it
-    if (typeof value === 'number') {
-      cleanValue = value;
-    } else if (typeof value === 'string') {
-      // Remove common currency symbols, spaces, and commas
-      cleanValue = value.replace(/[R$€£¥,\s]/g, '');
-      // Handle cases where value might be empty or contain only non-numeric characters
-      if (cleanValue === '' || cleanValue === null || cleanValue === undefined) {
-        return "-";
-      }
-    }
-    
-    const numValue = parseFloat(cleanValue);
-    if (isNaN(numValue) || numValue === 0) {
-      return "-";
-    }
-    return new Intl.NumberFormat('en-ZA', {
-      style: 'currency',
-      currency: 'ZAR',
-      minimumFractionDigits: 0,
-    }).format(numValue);
-  };
-
-  const calculateTotal = (deals) => {
-    return deals.reduce((sum, deal) => {
-      let cleanValue = deal.value;
-      
-      // Handle string values by cleaning them
-      if (typeof deal.value === 'string') {
-        cleanValue = deal.value.replace(/[R$€£¥,\s]/g, '');
-      }
-      
-      const numValue = parseFloat(cleanValue);
-      return sum + (isNaN(numValue) ? 0 : numValue);
-    }, 0);
-  };
-
-  const SortableDealCard = ({ deal }) => {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: deal.id });
-
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-    };
-
-    return (
-      <div
-        ref={setNodeRef}
-        style={style}
-        {...attributes}
-        {...listeners}
-        className={`bg-white rounded-lg shadow-sm border p-4 mb-3 cursor-move hover:shadow-md transition-shadow ${isDragging ? 'opacity-50' : ''}`}
-      >
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="font-semibold text-sm text-gray-800 line-clamp-2">{deal.title}</h3>
-          <MoreHorizontal className="w-4 h-4 text-gray-400 cursor-pointer" />
-        </div>
-        <div className="space-y-2 text-xs text-gray-600">
-          <div className="flex items-center gap-1">
-            <span className="text-green-600 font-medium">{formatCurrency(deal.value)}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <User className="w-3 h-3" />
-            <span>{deal.company}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Calendar className="w-3 h-3" />
-            <span>{formatDate(deal.closeDate)}</span>
-          </div>
-        </div>
-        <div className="mt-3 flex justify-between items-center">
-          <div className="text-xs text-gray-500">
-            Stage: <span className="font-medium">{deal.probability}</span>
-          </div>
-          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-xs font-medium">
-            {deal.contact.split(' ').map(n => n[0]).join('').substring(0, 2)}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const DroppableMonth = ({ month, children, colorClass }) => {
-    const { setNodeRef } = useSortable({ id: month });
-
-    return (
-      <div ref={setNodeRef} className={`rounded-lg p-4 h-full flex flex-col ${colorClass}`}>
-        <div className="mb-4">
-          <h2 className="font-semibold text-gray-800">{month}</h2>
-          <p className="text-sm text-gray-600">
-            {children.length} deals • {formatCurrency(calculateTotal(children))}
-          </p>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          <SortableContext items={children.map(d => d.id)} strategy={verticalListSortingStrategy}>
-            {children.map((deal, index) => (
-              <SortableDealCard key={`${month}-${deal.id}-${index}`} deal={deal} />
-            ))}
-          </SortableContext>
-        </div>
-      </div>
-    );
-  };
-
-  if (loading || userLoading) {
+  if (userLoading) { // Check userLoading first
     return (
       <div className="h-screen w-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">
-            {userLoading ? 'Loading user information...' : 'Loading Zoho deals...'}
+          <p className="text-gray-600">Loading user information...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (accessDenied) { // Show Access Denied if true
+    return (
+      <div className="h-screen w-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center p-8 bg-white shadow-lg rounded-lg">
+          <h2 className="text-3xl font-bold text-red-600 mb-4">Access Denied</h2>
+          <p className="text-gray-700 text-lg">
+            We're sorry, but we could not load your user information.
+            Please ensure you are accessing this application from within Zoho CRM.
           </p>
         </div>
       </div>
     );
   }
 
+  if (loading) { // Then check for deals loading
+    return (
+      <div className="h-screen w-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading Zoho deals...</p>
+        </div>
+      </div>
+    );
+  }
+
+
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={collisionDetectionStrategy}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <div className="h-screen w-screen bg-gray-50 flex flex-col">
@@ -561,17 +277,11 @@ const fetchData2 = () => {
               <input
                 type="text"
                 placeholder="Search deals..."
-                className="pl-10 pr-4 py-2 border rounded-lg"
+                className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            {/*
-            <button className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-100">
-              <Filter className="w-4 h-4" />
-              Filter
-            </button>
-            */}
             <p className='text-sm'>Viewing as:</p>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-lg">
+            <button className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors">
               <User className="w-4 h-4" /> {currentUser?.name || 'Loading...'}
             </button>
           </div>
@@ -589,6 +299,7 @@ const fetchData2 = () => {
                   <DroppableMonth
                     month={month}
                     colorClass={monthColors[index % monthColors.length]}
+                    currentUser={currentUser}
                   >
                     {monthDeals}
                   </DroppableMonth>
@@ -608,12 +319,20 @@ const fetchData2 = () => {
           <div className="text-xs text-gray-500">Last updated: {new Date().toLocaleString()}</div>
         </div>
 
-        <DragOverlay>
+        <DragOverlay dropAnimation={null}>
           {activeDeal && (
-            <div className="bg-white rounded-lg shadow-lg border-2 border-blue-400 p-4 rotate-2 scale-105">
+            <div className="bg-white rounded-lg shadow-xl border-2 border-blue-400 p-4 rotate-2 scale-105 cursor-grabbing">
               <h3 className="font-semibold text-sm text-gray-800">{activeDeal.title}</h3>
               <div className="text-xs mt-2 text-gray-600">
-                {formatCurrency(activeDeal.value)}
+                <div className="flex items-center gap-1">
+                  <span className="text-green-600 font-medium">{formatCurrency(activeDeal.value)}</span>
+                  {activeDeal.probability > 0 && (
+                    <span className="text-gray-500">({activeDeal.probability}%)</span>
+                  )}
+                </div>
+                <div className="mt-1">
+                  {activeDeal.company}
+                </div>
               </div>
             </div>
           )}
